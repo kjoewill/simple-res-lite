@@ -5,12 +5,20 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-
 # ✅ Configure basic logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Determine if we are in test mode
 TESTING = os.getenv("TESTING") == "1"
+
+# ✅ Initialize the test database schema if in test mode
+if TESTING:
+    try:
+        from init_db import init_db
+        init_db()
+        logging.debug("✅ Initialized database from schema.sql")
+    except Exception as e:
+        logging.error(f"❌ Failed to initialize test DB: {e}")
 
 app = FastAPI()
 
