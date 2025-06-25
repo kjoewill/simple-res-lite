@@ -4,7 +4,7 @@
 set -e
 
 # ─── Helper: Kill process on a given port ─────────────────────────────────────
-function kill_port_process() {
+kill_port_process() {
   local PORT=$1
   lsof -ti tcp:$PORT | xargs kill -9 2>/dev/null || true
 }
@@ -31,7 +31,7 @@ cd ..
 
 # ─── Step 4: Wait for Servers ─────────────────────────────────────────────────
 echo "⏳ Waiting for backend and frontend to be ready..."
-npx wait-on http://localhost:8000/api/health http://localhost:5173
+(cd frontend && npx wait-on http://localhost:8000/api/health http://localhost:5173)
 
 # Optional: verify backend health with GET
 echo "🔎 Verifying backend health check..."
