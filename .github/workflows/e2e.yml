@@ -41,4 +41,20 @@ jobs:
           npx playwright install --with-deps
 
       - name: Run E2E test suite
+        id: run-tests
         run: ./run_e2e_tests.sh
+
+      - name: Emit notice on success
+        if: success()
+        run: echo "::notice ::✅ All Playwright tests passed successfully."
+
+      - name: Emit error on failure
+        if: failure()
+        run: |
+          echo "::error ::❌ E2E test suite failed."
+          echo "::group::🚨 Frontend log tail"
+          tail -n 20 frontend.log || echo "(frontend.log missing)"
+          echo "::endgroup::"
+          echo "::group::🚨 Backend log tail"
+          tail -n 20 backend.log || echo "(backend.log missing)"
+          echo "::endgroup::"
