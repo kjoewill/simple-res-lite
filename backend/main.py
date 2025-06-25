@@ -1,8 +1,13 @@
 import os
 import sqlite3
+import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+
+# ✅ Configure basic logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Determine if we are in test mode
 TESTING = os.getenv("TESTING") == "1"
