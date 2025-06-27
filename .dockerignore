@@ -1,0 +1,28 @@
+# Ignore Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.env
+*.env.*
+
+# Ignore node dependencies and build outputs
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Ignore backend virtual environment (you rebuild in Docker)
+backend/venv
+
+# Ignore Git and editor configs
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# Ignore Playwright artifacts
+frontend/test-results
+frontend/playwright-report

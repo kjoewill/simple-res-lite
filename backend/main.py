@@ -4,12 +4,16 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-# ✅ Configure basic logging
-logging.basicConfig(level=logging.DEBUG)
+from fastapi.staticfiles import StaticFiles
 
 # Determine if we are in test mode
 TESTING = os.getenv("TESTING") == "1"
+
+if not TESTING:
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+
+# ✅ Configure basic logging
+logging.basicConfig(level=logging.DEBUG)
 
 # ✅ Initialize the test database schema if in test mode
 if TESTING:
