@@ -4,21 +4,25 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-# ✅ Configure basic logging
-logging.basicConfig(level=logging.DEBUG)
+# ─── SETUP LOGGING ──────────────────────────────────────────────────────────────
+logging.basicConfig(level=logging.INFO)
 
-# Determine if we are in test mode
-TESTING = os.getenv("TESTING") == "1"
+# ─── CREATE DB IF NEEDED ────────────────────────────────────────────────────────
+DB_PATH = "database.db"
+SCHEMA_PATH = os.path.join("backend", "schema.sql")
 
-# ✅ Initialize database if running in Fly.io deployment (not during testing)
-if not TESTING:
-    from backend.init_db import init_db
-    init_db()
+if not os.path.exists(DB_PATH):
+    logging.info("📁 Database file not found. Creating new database.")
+    with sqlite3.connect(DB_PATH) as conn:
+        with open(SCHEMA_PATH, "r") as f:
+            conn.executescript(f.read())
+    logging.info("✅ Database initialized from schema.sql.")
 
+# ─── APP SETUP ───────────────────────────────────────────────────────────────────
 app = FastAPI()
 
-# Enable CORS for all origins in development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Consider locking this down in production
@@ -27,12 +31,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Mount static frontend files only in production mode
+TESTING = os.getenv("TESTING") == "1"
 if not TESTING:
-    from fastapi.staticfiles import StaticFiles
     app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 
-# ─── ROUTES ─────────────────────────────────────────────────────────────
+# ─── ROUTES ──────────────────────────────────────────────────────────────────────
 
 @app.get("/api/ping")
 def ping():
@@ -40,7 +43,7 @@ def ping():
 
 @app.get("/api/reservations/{date}")
 def get_reservations(date: str):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT glider, time, name FROM reservations WHERE date = ?", (date,))
     rows = cursor.fetchall()
@@ -54,8 +57,7 @@ async def seed_test_data(request: Request):
     if not TESTING:
         return JSONResponse(status_code=403, content={"error": "Test-only endpoint"})
 
-    db_path = "database.db"
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("DELETE FROM reservations")
@@ -69,11 +71,7 @@ async def seed_test_data(request: Request):
     conn.commit()
     conn.close()
 
-    return {
-        "status": "seeded",
-        "rows": len(test_data),
-        "db_file": os.path.abspath(db_path),
-    }
+    return {"status": "seeded", "rows": len(test_data)}
 
 @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
 def health_check():
