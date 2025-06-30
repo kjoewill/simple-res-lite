@@ -1,21 +1,31 @@
-# ─── Base Python Image ─────────────────────────────────────────────────────────
+# ─── Stage 1: Build Frontend ────────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-build
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ .
+RUN npm run build
+
+# ─── Stage 2: Final Image ──────────────────────────────────────────────────────
 FROM python:3.11-slim
 
-# ─── Set Working Directory ─────────────────────────────────────────────────────
 WORKDIR /app
 
-# ─── Copy Only Backend Code ────────────────────────────────────────────────────
-COPY backend/ ./backend/
+# Install Python dependencies
 COPY backend/requirements.txt .
-
-# ─── Install Dependencies ──────────────────────────────────────────────────────
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ─── Initialize Database ───────────────────────────────────────────────────────
-RUN python backend/init_db.py
+# Copy backend
+COPY backend/ ./backend/
 
-# ─── Expose Port for Uvicorn ───────────────────────────────────────────────────
+# Copy built frontend from previous stage
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+
+# Expose FastAPI port
 EXPOSE 8000
 
-# ─── Run Uvicorn Server ────────────────────────────────────────────────────────
+# Run FastAPI app
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
