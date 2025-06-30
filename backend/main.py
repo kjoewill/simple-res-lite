@@ -4,25 +4,17 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-
-# Determine if we are in test mode
-TESTING = os.getenv("TESTING") == "1"
-
-if not TESTING:
-    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 
 # ✅ Configure basic logging
 logging.basicConfig(level=logging.DEBUG)
 
-# ✅ Initialize the test database schema if in test mode
-if TESTING:
-    try:
-        from init_db import init_db
-        init_db()
-        logging.debug("✅ Initialized database from schema.sql")
-    except Exception as e:
-        logging.error(f"❌ Failed to initialize test DB: {e}")
+# Determine if we are in test mode
+TESTING = os.getenv("TESTING") == "1"
+
+# ✅ Initialize database if running in Fly.io deployment (not during testing)
+if not TESTING:
+    from backend.init_db import init_db
+    init_db()
 
 app = FastAPI()
 
@@ -34,6 +26,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ✅ Mount static frontend files only in production mode
+if not TESTING:
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 
 # ─── ROUTES ─────────────────────────────────────────────────────────────
 
