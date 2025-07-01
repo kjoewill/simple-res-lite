@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status
 set -e
+
+# ─── Config ───────────────────────────────────────────────────────────────────
+WATCH_MODE=false
+if [[ "$1" == "--watch" ]]; then
+  WATCH_MODE=true
+fi
 
 # ─── Helper: Kill process on a given port ─────────────────────────────────────
 function kill_port_process() {
@@ -18,7 +23,7 @@ rm -f backend.log frontend.log
 # ─── Step 2: Start Backend ────────────────────────────────────────────────────
 echo "🔧 Starting backend..."
 cd backend
-TESTING=1 ./venv/bin/uvicorn main:app --port 8000 > ../backend.log 2>&1 &
+TESTING=1 ./venv/bin/uvicorn main:app --reload --port 8000 > ../backend.log 2>&1 &
 BACK_PID=$!
 cd ..
 
@@ -41,12 +46,12 @@ if ! (cd frontend && npx wait-on --timeout 30000 http://localhost:8000/api/healt
   exit 1
 fi
 
-# Optional: verify backend health with GET
-echo "🔎 Verifying backend health check..."
-curl -sSf http://localhost:8000/api/health > /dev/null
-
-# ─── Step 5: Run Playwright Tests ─────────────────────────────────────────────
-run_tests() {
+# ─── Step 5: Either Run Tests or Watch ────────────────────────────────────────
+if [ "$WATCH_MODE" = true ]; then
+  echo "✅ Servers running in watch mode. Ctrl+C to stop."
+  trap "echo '🧹 Cleaning up...'; kill $BACK_PID $FRONT_PID; exit" INT
+  wait
+else
   echo "✅ Servers ready. Running Playwright tests..."
   cd frontend
   npx playwright test
@@ -60,15 +65,9 @@ run_tests() {
     tail -n 20 backend.log
   fi
 
-  return $EXIT_CODE
-}
+  echo "🧹 Cleaning up background servers..."
+  kill $BACK_PID
+  kill $FRONT_PID
 
-run_tests
-RESULT=$?
-
-# ─── Step 6: Cleanup ──────────────────────────────────────────────────────────
-echo "🧹 Cleaning up background servers..."
-kill $BACK_PID
-kill $FRONT_PID
-
-exit $RESULT
+  exit $EXIT_CODE
+fi
