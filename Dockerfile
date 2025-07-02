@@ -1,3 +1,7 @@
+# Force rebuild of everything below this line
+ARG CACHE_BUST=2025-07-01-01
+
+
 # ─── Stage 1: Build Frontend ────────────────────────────────────────────────────
 FROM node:20-alpine AS frontend-build
 
@@ -7,7 +11,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 COPY frontend/ .
-RUN npm run build
+RUN rm -rf dist && npm run build && echo "✅ Build succeeded" || (echo "❌ Build failed"; ls -al; exit 1)
 
 # ─── Stage 2: Final Image ──────────────────────────────────────────────────────
 FROM python:3.11-slim

@@ -3,9 +3,11 @@ import sqlite3
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request as StarletteRequest
 
 # ─── Configure logging ───────────────────────────────────────────────────────
 logging.basicConfig(level=logging.DEBUG)
@@ -38,9 +40,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-if not TESTING:
-    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
 
 # ─── Models ──────────────────────────────────────────────────────────────────
 class GliderIn(BaseModel):
@@ -121,3 +120,15 @@ async def seed_test_data(request: Request):
 @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
 def health_check():
     return {"status": "ok"}
+
+if not TESTING:
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+
+# ─── Catch-all handler for client-side routing ───────────────────────────────
+if not TESTING:
+    @app.exception_handler(StarletteHTTPException)
+    async def custom_404_handler(request: StarletteRequest, exc: StarletteHTTPException):
+        if request.url.path.startswith("/api"):
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        index_path = os.path.join("frontend", "dist", "index.html")
+        return FileResponse(index_path)

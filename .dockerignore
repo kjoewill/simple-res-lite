@@ -26,3 +26,6 @@ backend/venv
 # Ignore Playwright artifacts
 frontend/test-results
 frontend/playwright-report
+
+# Ignore the local database
+backend/database.db
